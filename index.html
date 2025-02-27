@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心情音乐放松</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        #trailCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 3s ease-in-out;
+            background: linear-gradient(45deg, #08AEEA 0%, #2AF598 100%);
+        }
+
+        .app-container {
+            width: 90%;
+            max-width: 1200px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .mood-selection h2 {
+            color: white;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .mood-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .mood-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 1rem;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .mood-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .mood-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        .player-section {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 2rem;
+            color: white;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+
+        #playPauseBtn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: white;
+            color: #08AEEA;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 60px;
+            min-height: 60px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        #playPauseBtn:hover {
+            transform: scale(1.1);
+        }
+
+        #volumeSlider {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+        }
+
+        .now-playing {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                width: 95%;
+                padding: 1rem;
+            }
+
+            .mood-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .player-controls {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* 进度条容器样式 */
+        .progress-container {
+            width: 100%;
+            position: relative;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        /* 进度条样式 */
+        .progress-bar {
+            width: 100%;
+            height: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 隐藏进度条默认的滑块 */
+        .progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 0;
+            height: 0;
+        }
+        .progress-bar::-moz-range-thumb {
+            width: 0;
+            height: 0;
+            border: 0;
+        }
+
+        /* 进度条填充部分 */
+        .progress-filled {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            transition: width 0.1s ease;
+        }
+
+        /* 音量控制样式 */
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .volume-slider {
+            -webkit-appearance: none;
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* 更新小猫样式 */
+        .cat-slider {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="white" d="M290.59 192c-20.18 0-106.82 1.98-162.59 85.95V192c0-52.94-43.06-96-96-96-17.67 0-32 14.33-32 32s14.33 32 32 32c17.64 0 32 14.36 32 32v256c0 35.3 28.7 64 64 64h176c8.84 0 16-7.16 16-16v-16c0-17.67-14.33-32-32-32h-32l128-96v144c0 8.84 7.16 16 16 16h32c8.84 0 16-7.16 16-16V289.86c-10.29 2.67-20.89 4.54-32 4.54-61.81 0-113.52-44.05-125.41-102.4zM448 96h-64l-64-64v134.4c0 53.02 42.98 96 96 96s96-42.98 96-96V32l-64 64zm-72 80c-8.84 0-16-7.16-16-16s7.16-16 16-16 16 7.16 16 16-7.16 16-16 16zm80 0c-8.84 0-16-7.16-16-16s7.16-16 16-16 16 7.16 16 16-7.16 16-16 16z"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            z-index: 3;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="trailCanvas"></canvas>
+    <div class="app-container">
+        <header>
+            <h1>心情音乐放松</h1>
+            <p>选择您当前的心情，让我们帮您放松</p>
+        </header>
+        
+        <main>
+            <section class="mood-selection">
+                <h2>选择心情</h2>
+                <div class="mood-grid">
+                    <button class="mood-btn" data-mood="stress">
+                        <i class="fas fa-wind"></i> 压力
+                    </button>
+                    <button class="mood-btn" data-mood="anxiety">
+                        <i class="fas fa-cloud-rain"></i> 焦虑
+                    </button>
+                    <button class="mood-btn" data-mood="sadness">
+                        <i class="fas fa-water"></i> 悲伤
+                    </button>
+                    <button class="mood-btn" data-mood="anger">
+                        <i class="fas fa-fire"></i> 愤怒
+                    </button>
+                    <button class="mood-btn" data-mood="excitement">
+                        <i class="fas fa-sun"></i> 兴奋
+                    </button>
+                    <button class="mood-btn" data-mood="happiness">
+                        <i class="fas fa-star"></i> 快乐
+                    </button>
+                </div>
+            </section>
+
+            <section class="player-section">
+                <div class="music-player">
+                    <div class="player-controls">
+                        <button id="playPauseBtn">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="progress-container">
+                            <div class="progress-filled"></div>
+                            <div class="cat-slider"></div>
+                            <input type="range" class="progress-bar" id="progressBar" min="0" max="100" value="0">
+                        </div>
+                        <div class="volume-control">
+                            <i class="fas fa-volume-up volume-icon"></i>
+                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50">
+                        </div>
+                        <div class="timer">
+                            <span id="currentTime">00:00</span> / 
+                            <span id="duration">00:00</span>
+                        </div>
+                    </div>
+                    <div class="now-playing">
+                        <p>当前播放: <span id="currentTrack">未选择</span></p>
+                    </div>
+                    <audio id="audioPlayer">
+                        <source id="audioSource" src="" type="audio/mpeg">
+                        您的浏览器不支持音频元素。
+                    </audio>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // 存储最后设置的颜色
+        let lastSetColors = ['#08AEEA', '#2AF598'];
+
+        // 鼠标轨迹效果
+        const canvas = document.getElementById('trailCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let hue = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // 存储绘画的线条信息
+        let lines = [];
+
+        // 修改绘画函数
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            ctx.strokeStyle = `hsla(${hue}, 100%, 50%, 0.3)`;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 40;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+
+            // 保存线条信息
+            lines.push({
+                startX: lastX,
+                startY: lastY,
+                endX: e.clientX,
+                endY: e.clientY,
+                color: `hsla(${hue}, 100%, 50%, 0.3)`,
+                timestamp: Date.now(),
+                opacity: 0.3
+            });
+
+            [lastX, lastY] = [e.clientX, e.clientY];
+            hue = (hue + 1) % 360;
+        }
+
+        window.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.clientX, e.clientY];
+        });
+
+        window.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', () => isDrawing = false);
+        window.addEventListener('mouseout', () => isDrawing = false);
+
+        // 添加新的渲染函数
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const now = Date.now();
+
+            // 更新和绘制每条线
+            lines = lines.filter(line => {
+                const age = now - line.timestamp;
+                if (age > 30000) return false; // 超过30秒的线条移除
+
+                // 计算剩余时间的透明度
+                if (age > 25000) { // 最后5秒开始淡出
+                    line.opacity = 0.3 * (30000 - age) / 5000;
+                }
+
+                // 绘制线条
+                ctx.beginPath();
+                ctx.strokeStyle = line.color.replace('0.3', line.opacity);
+                ctx.lineWidth = 40;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.moveTo(line.startX, line.startY);
+                ctx.lineTo(line.endX, line.endY);
+                ctx.stroke();
+
+                return true;
+            });
+
+            requestAnimationFrame(render);
+        }
+
+        // 启动渲染循环
+        render();
+
+        const moodButtons = document.querySelectorAll('.mood-btn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioSource = document.getElementById('audioSource');
+        const currentTrack = document.getElementById('currentTrack');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const durationDisplay = document.getElementById('duration');
+        const progressBar = document.getElementById('progressBar');
+
+        let isPlaying = false;
+
+        function getCurrentGradientColors() {
+            const style = window.getComputedStyle(document.body);
+            const background = style.background;
+            
+            const regex = /linear-gradient\(45deg,\s*(#[a-fA-F0-9]{6}|rgb\(\d+,\s*\d+,\s*\d+\))\s*0%,\s*(#[a-fA-F0-9]{6}|rgb\(\d+,\s*\d+,\s*\d+\))\s*100%\)/;
+            
+            const match = background.match(regex);
+            if (match) {
+                const color1 = match[1].startsWith('rgb') ? rgbToHex(...match[1].match(/\d+/g)) : match[1];
+                const color2 = match[2].startsWith('rgb') ? rgbToHex(...match[2].match(/\d+/g)) : match[2];
+                return [color1, color2];
+            }
+            
+            return lastSetColors;
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = parseInt(x).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function animateGradient(startColors, endColors) {
+            const duration = 3000;
+            const startTime = performance.now();
+
+            function updateGradient(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                const easeProgress = progress < 0.5
+                    ? 4 * progress * progress * progress
+                    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+                const currentColors = startColors.map((startColor, index) => {
+                    const start = hexToRgb(startColor);
+                    const end = hexToRgb(endColors[index]);
+                    
+                    const r = Math.round(start.r + (end.r - start.r) * easeProgress);
+                    const g = Math.round(start.g + (end.g - start.g) * easeProgress);
+                    const b = Math.round(start.b + (end.b - start.b) * easeProgress);
+                    
+                    return rgbToHex(r, g, b);
+                });
+
+                document.body.style.background = `linear-gradient(45deg, ${currentColors[0]} 0%, ${currentColors[1]} 100%)`;
+
+                if (progress < 1) {
+                    requestAnimationFrame(updateGradient);
+                }
+            }
+
+            requestAnimationFrame(updateGradient);
+        }
+
+        moodButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const mood = button.getAttribute('data-mood');
+                moodButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                playMusic(mood);
+            });
+        });
+
+        function playMusic(mood) {
+            let audioFile;
+            let moodName;
+            let gradientColors;
+
+            switch (mood) {
+                case 'stress':
+                    audioFile = 'audio/Josué Novais Piano Worship - Life Source.mp3';
+                    moodName = '缓解压力';
+                    gradientColors = ['#00c6fb', '#005bea'];
+                    break;
+                case 'anxiety':
+                    audioFile = 'audio/钢琴.mp3';
+                    moodName = '舒缓焦虑';
+                    gradientColors = ['#84fab0', '#8fd3f4'];
+                    break;
+                case 'sadness':
+                    audioFile = 'audio/Cody Fry - Things You Said (Instrumental).mp3';
+                    moodName = '抚慰悲伤';
+                    gradientColors = ['#a8edea', '#fed6e3'];
+                    break;
+                case 'anger':
+                    audioFile = 'audio/marry life.mp3';
+                    moodName = '平息愤怒';
+                    gradientColors = ['#f5576c', '#f093fb'];
+                    break;
+                case 'excitement':
+                    audioFile = 'audio/Kirk Whalum - Club Paradise.mp3';
+                    moodName = '愉悦音乐';
+                    gradientColors = ['#fa709a', '#fee140'];
+                    break;
+                case 'happiness':
+                    audioFile = 'audio/快乐乐曲.mp3';
+                    moodName = '快乐音乐';
+                    gradientColors = ['#fad0c4', '#ffd1ff'];
+                    break;
+                default:
+                    break;
+            }
+
+            if (audioFile) {
+                audioSource.src = audioFile;
+                currentTrack.textContent = moodName;
+                audioPlayer.load();
+                audioPlayer.play();
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                isPlaying = true;
+
+                const startColors = getCurrentGradientColors();
+                lastSetColors = gradientColors;
+                animateGradient(startColors, gradientColors);
+            }
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                audioPlayer.pause();
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            } else {
+                audioPlayer.play();
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            }
+            isPlaying = !isPlaying;
+        });
+
+        volumeSlider.addEventListener('input', () => {
+            audioPlayer.volume = volumeSlider.value / 100;
+        });
+
+        // 获取新增的进度条元素
+        const progressFilled = document.querySelector('.progress-filled');
+        const catSlider = document.querySelector('.cat-slider');
+
+        // 修改进度条更新逻辑
+        audioPlayer.addEventListener('timeupdate', () => {
+            const currentTime = Math.floor(audioPlayer.currentTime);
+            const duration = Math.floor(audioPlayer.duration);
+            if (!isNaN(duration)) {
+                const progress = (currentTime / duration) * 100;
+                progressBar.value = progress;
+                progressFilled.style.width = `${progress}%`;
+                catSlider.style.left = `${progress}%`;
+                currentTimeDisplay.textContent = formatTime(currentTime);
+                durationDisplay.textContent = formatTime(duration);
+            }
+        });
+
+        // 修改进度条点击逻辑
+        progressBar.addEventListener('input', () => {
+            const time = (progressBar.value * audioPlayer.duration) / 100;
+            audioPlayer.currentTime = time;
+            progressFilled.style.width = `${progressBar.value}%`;
+            catSlider.style.left = `${progressBar.value}%`;
+        });
+
+        // 添加进度条点击事件
+        progressBar.addEventListener('change', () => {
+            const time = (progressBar.value * audioPlayer.duration) / 100;
+            audioPlayer.currentTime = time;
+            progressFilled.style.width = `${progressBar.value}%`;
+            catSlider.style.left = `${progressBar.value}%`;
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            isPlaying = false;
+        });
+
+        // 初始化音量
+        audioPlayer.volume = volumeSlider.value / 100;
+    </script>
+</body>
+</html>
+
+
